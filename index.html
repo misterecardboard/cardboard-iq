@@ -26,10 +26,10 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
     <button data-page="marketing"><span class="ico">✦</span>AI Marketing Studio</button>
     <button data-page="flip"><span class="ico">↗</span>Flip IQ</button>
   </nav>
-  <div class="sidebarbottom"><strong>✦ Your collector toolkit</strong><p>Your cards, your numbers, smarter decisions.</p><button class="button" style="width:100%" data-goto="collection">Add your first card</button></div>
+  <div class="sidebarbottom"><strong>✦ Your collector toolkit</strong><p>Your cards, your numbers, smarter decisions.</p><button class="button" style="width:100%" data-goto="mistereai">Scan a card with AI</button></div>
 </aside>
 <main class="main">
-  <header class="topbar"><div><div class="eyebrow">Your collector workspace</div><h1 id="pageTitle">Good morning, collector.</h1><p class="sub" id="pageSubtitle">Your collection at a glance. Make your next move a smart one.</p></div><div class="topactions"><button class="button primary" data-goto="collection">＋ Add a card</button><div class="avatar">IQ</div></div></header>
+  <header class="topbar"><div><div class="eyebrow">Your collector workspace</div><h1 id="pageTitle">Good morning, collector.</h1><p class="sub" id="pageSubtitle">Your collection at a glance. Make your next move a smart one.</p></div><div class="topactions"><button class="button primary" data-goto="mistereai">✦ Scan a card</button><div class="avatar">IQ</div></div></header>
 
   <section class="panel" id="authPanel" style="margin-bottom:22px">
     <div class="panelhead"><div><h2 id="authHeading">Connect your collection</h2><p id="authMessage">Sign in or create an account to save cards securely across sessions.</p></div><span class="pill" id="connectionStatus">Not signed in</span></div>
@@ -57,7 +57,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
   </section>
 
   <section class="section" id="collection">
-    <div class="sectionhead"><div><h2>My Collection</h2><p>Catalog your cards and keep your numbers in one place.</p></div><button class="button primary" id="showAdd">＋ Add card</button></div>
+    <div class="sectionhead"><div><h2>My Collection</h2><p>Your saved cards, images, details, and export tools in one place.</p></div><button class="button primary" data-goto="mistereai">✦ Scan a card with Mister E AI</button></div>
 
     <div class="panel" id="addPanel" style="margin-bottom:18px;display:none"><div class="panelhead"><div><h2>Add a card</h2><p>Enter what you know. You can edit the details later.</p></div></div>
       <form id="cardForm" class="formgrid">
@@ -72,8 +72,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
       </form>
     </div>
     <div class="toolbar"><input id="searchCards" class="field search" placeholder="Search player, set, sport…"><select id="sortCards" class="field" style="max-width:210px"><option value="newest">Newest added</option><option value="name">Name A–Z</option><option value="valueHigh">Value: high to low</option><option value="valueLow">Value: low to high</option><option value="profitHigh">Profit: high to low</option><option value="costHigh">Cost: high to low</option></select><button class="button" type="button" id="exportCards">Export CSV</button><select id="filterSport" class="field" style="max-width:190px"><option value="">All sports</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
-    <div class="tablewrap"><table class="table"><thead><tr><th>Card</th><th>Sport / Condition</th><th>Cost</th><th>Est. value</th><th>Unrealized P/L</th><th>Actions</th></tr></thead><tbody id="cardRows"><tr><td colspan="6" class="empty">No cards yet. Add a card to start your catalog.</td></tr></tbody></table></div>
-    <div class="notice">Cards are saved to your Supabase account when you are signed in. Pricing is still manually entered; live market values are not connected.</div>
+    <div class="tablewrap"><table class="table"><thead><tr><th>Card & images</th><th>Identification</th><th>Condition</th><th>Purchase cost</th><th>Est. value</th><th>Unrealized P/L</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="cardRows"><tr><td colspan="8" class="empty">Your collection is empty. Scan a card with Mister E AI to get started.</td></tr></tbody></table></div>
+    <div class="notice">Your collection stores the details you confirm in Mister E AI, along with front/back images when available. Estimated values remain manually entered for now. Use Export CSV to keep a copy of your inventory.</div>
   </section>
 
   <section class="section" id="roi">
@@ -183,8 +183,8 @@ function setAuthUI(user){
 }
 function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===page));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));let titles={dashboard:['Good morning, collector.','Your collection at a glance. Make your next move a smart one.'],mistereai:['Mister E AI','Scan cards, review AI suggestions, and save them to your collection.'],collection:['My Collection','Your cards, cataloged your way.'],roi:['ROI Calculator','Know the numbers before you buy or sell.'],marketing:['AI Marketing Studio','Create content that helps your cards stand out.'],flip:['Flip IQ','Evaluate a potential deal before committing your money.']};$('pageTitle').textContent=titles[page][0];$('pageSubtitle').textContent=titles[page][1];window.scrollTo({top:0,behavior:'smooth'});if(page==='collection')renderCards()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));
-document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{go(b.dataset.goto);if(b.dataset.goto==='collection')$('addPanel').style.display='block'}));
-$('showAdd').onclick=()=>{if(!currentUser){authMessage('Please sign in before saving cards.',true);$('authEmail').focus();return}$('addPanel').style.display='block';$('cardName').focus()};
+document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.goto)));
+$('showAdd').style.display='none';
 $('cancelAdd').onclick=()=>resetCardForm();$('cancelEdit').onclick=()=>resetCardForm();
 function fromDb(row){return {id:row.id,name:row.player_name,set:row.year_set_card_number||'',sport:row.sport||'Other',condition:row.condition_grade||'',cost:Number(row.purchase_cost)||0,value:Number(row.estimated_value)||0,notes:row.notes||'',frontPath:row.image_front_path||null,backPath:row.image_back_path||null,frontUrl:null,backUrl:null}}
 async function loadCards(){
@@ -199,11 +199,11 @@ function renderCards(){
  let q=$('searchCards').value.toLowerCase(),sport=$('filterSport').value,sort=$('sortCards').value;
  let list=cards.filter(c=>(!sport||c.sport===sport)&&[c.name,c.set,c.sport,c.condition,c.notes].join(' ').toLowerCase().includes(q));
  list.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='valueHigh'?b.value-a.value:sort==='valueLow'?a.value-b.value:sort==='profitHigh'?(b.value-b.cost)-(a.value-a.cost):sort==='costHigh'?b.cost-a.cost:String(b.id).localeCompare(String(a.id)));
- $('cardRows').innerHTML=list.length?list.map(c=>`<tr><td>${c.frontUrl?`<img src="${safe(c.frontUrl)}" alt="${safe(c.name)} front" style="width:46px;height:62px;object-fit:cover;border-radius:6px;float:left;margin:0 10px 5px 0">`:''}<strong>${safe(c.name)}</strong><small>${safe(c.set||'Set / number not entered')}</small>${c.backUrl?`<small><a href="${safe(c.backUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">View back image</a></small>`:''}</td><td>${safe(c.sport)}<small>${safe(c.condition||'Condition not entered')}</small></td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td><div style="display:flex;gap:6px"><button class="button" data-edit="${safe(c.id)}">Edit</button><button class="button" data-remove="${safe(c.id)}">Remove</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">'+(currentUser?'No matching cards found.':'Sign in to load your saved collection.')+'</td></tr>';
+ $('cardRows').innerHTML=list.length?list.map(c=>`<tr><td>${c.frontUrl?`<a href="${safe(c.frontUrl)}" target="_blank" rel="noopener noreferrer"><img src="${safe(c.frontUrl)}" alt="${safe(c.name)} front" style="width:58px;height:78px;object-fit:cover;border-radius:7px;margin:0 6px 6px 0"></a>`:'<span class="pill">No front image</span>'}${c.backUrl?`<a href="${safe(c.backUrl)}" target="_blank" rel="noopener noreferrer"><img src="${safe(c.backUrl)}" alt="${safe(c.name)} back" style="width:58px;height:78px;object-fit:cover;border-radius:7px;margin:0 0 6px"></a>`:''}<strong style="display:block">${safe(c.name)}</strong></td><td>${safe(c.set||'Year / set / card number not entered')}<small>${safe(c.sport)}</small></td><td>${safe(c.condition||'Not entered')}</td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td style="white-space:pre-wrap;min-width:180px">${safe(c.notes||'—')}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="button" data-edit="${safe(c.id)}">Edit details</button><button class="button" data-remove="${safe(c.id)}">Remove</button></div></td></tr>`).join(''):'<tr><td colspan="8" class="empty">'+(currentUser?'No matching cards found.':'Sign in to load your saved collection.')+'</td></tr>';
  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
  document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{if(!currentUser)return;if(!confirm('Remove this card from your collection? This cannot be undone.'))return;const {error}=await db.from('cards').delete().eq('id',b.dataset.remove);if(error){toast('Could not remove card: '+error.message);return}cards=cards.filter(c=>String(c.id)!==String(b.dataset.remove));updateStats();toast('Card removed from your collection')});
  $('recentCards').innerHTML=cards.length?cards.slice(0,3).map((c,i)=>`<div class="holding"><div class="cardthumb ${i===1?'purp':i===2?'gold':''}">CARD</div><div class="holdinginfo"><strong>${safe(c.name)}</strong><small>${safe(c.set||c.sport)}</small></div><div class="holdingval">${money(c.value)}<small>${money(c.value-c.cost)} P/L</small></div></div>`).join(''):'<div class="empty">Your collection is waiting.<br><button class="button primary" data-goto="collection" style="margin-top:12px">＋ Add a card</button></div>';
- document.querySelectorAll('#recentCards [data-goto]').forEach(b=>b.onclick=()=>{go('collection');$('addPanel').style.display='block'});
+ document.querySelectorAll('#recentCards [data-goto]').forEach(b=>b.onclick=()=>go('mistereai'));
 }
 function startEdit(id){
  const c=cards.find(x=>String(x.id)===String(id));if(!c||!currentUser)return;
@@ -342,7 +342,7 @@ $('analyzeCardButton').onclick=async()=>{
   ].filter(Boolean).join('\n\n');
   const sources=Array.isArray(result.research_sources)?result.research_sources:[];
   if(sources.length){$('scanResearch').style.display='block';$('scanResearch').innerHTML='<strong>Research sources</strong><ul>'+sources.map(s=>'<li><a href="'+safe(s.url)+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">'+safe(s.title||s.url)+'</a></li>').join('')+'</ul>'}else{$('scanResearch').style.display='none'}
-  $('scanResult').style.display='block';$('scanStatus').textContent='Analysis complete. Review and correct the suggested details before saving. No market value was automatically verified.';$('scanResult').scrollIntoView({behavior:'smooth',block:'start'});
+  $('scanResult').style.display='block';$('scanStatus').textContent='Analysis complete. Review the identification, history, listing copy, and research sources below. Market values are not included yet.';$('scanResult').scrollIntoView({behavior:'smooth',block:'start'});
  }catch(err){$('scanStatus').textContent='Could not identify this card: '+err.message+' If this continues, check that OPENAI_API_KEY is configured in Vercel.'}
  finally{button.disabled=false;button.textContent='Identify card'}
 };
@@ -357,7 +357,7 @@ $('saveScannedCard').onclick=async()=>{
  if(error){button.disabled=false;button.textContent='Save to My Collection';$('scanStatus').textContent='Could not save card: '+error.message;return}
  const saved=fromDb(data);let uploadErrors=[];
  for(const [side,file] of [['front',frontFile],['back',backFile]]){if(!file)continue;const path=`${currentUser.id}/${saved.id}/${side}.jpg`;const up=await db.storage.from(CARD_IMAGE_BUCKET).upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});if(up.error){uploadErrors.push(side+': '+up.error.message);continue}const field=side==='front'?'image_front_path':'image_back_path';const upd=await db.from('cards').update({[field]:path}).eq('id',saved.id);if(upd.error){uploadErrors.push(side+' image reference: '+upd.error.message);continue}if(side==='front')saved.frontPath=path;else saved.backPath=path;const signed=await db.storage.from(CARD_IMAGE_BUCKET).createSignedUrl(path,3600);if(!signed.error){if(side==='front')saved.frontUrl=signed.data.signedUrl;else saved.backUrl=signed.data.signedUrl}}
- button.disabled=false;button.textContent='Save to My Collection';cards.unshift(saved);updateStats();$('scanStatus').textContent=uploadErrors.length?'Card saved, but image upload issue: '+uploadErrors.join('; '):'Card and images saved to your collection.';toast(uploadErrors.length?'Card saved; check image upload message':'Card and images saved to My Collection');$('scanResult').style.display='none';$('scanFront').value='';$('scanBack').value='';$('scanFrontCamera').value='';$('scanBackCamera').value='';previewImage('scanFront','scanFrontPreview','scanFrontCamera');previewImage('scanBack','scanBackPreview','scanBackCamera');
+ button.disabled=false;button.textContent='Save to My Collection';cards.unshift(saved);updateStats();$('scanStatus').textContent=uploadErrors.length?'Card saved, but image upload issue: '+uploadErrors.join('; '):'Card and images saved to your collection.';toast(uploadErrors.length?'Card saved; check image upload message':'Card and images saved to My Collection');$('scanResult').style.display='none';$('scanFront').value='';$('scanBack').value='';$('scanFrontCamera').value='';$('scanBackCamera').value='';previewImage('scanFront','scanFrontPreview','scanFrontCamera');previewImage('scanBack','scanBackPreview','scanBackCamera');go('collection');
 };
 $('discardScan').onclick=()=>{$('scanResult').style.display='none';scanAnalysis=null;$('scanStatus').textContent='Results discarded. Upload images to analyze another card.'};
 
