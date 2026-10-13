@@ -30,6 +30,16 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
 <main class="main">
   <header class="topbar"><div><div class="eyebrow">Your collector workspace</div><h1 id="pageTitle">Good morning, collector.</h1><p class="sub" id="pageSubtitle">Your collection at a glance. Make your next move a smart one.</p></div><div class="topactions"><button class="button primary" data-goto="collection">＋ Add a card</button><div class="avatar">IQ</div></div></header>
 
+  <section class="panel" id="authPanel" style="margin-bottom:22px">
+    <div class="panelhead"><div><h2 id="authHeading">Connect your collection</h2><p id="authMessage">Sign in or create an account to save cards securely across sessions.</p></div><span class="pill" id="connectionStatus">Not signed in</span></div>
+    <form id="authForm" class="formgrid">
+      <div class="formgroup"><label for="authEmail">Email</label><input class="field" id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com"></div>
+      <div class="formgroup"><label for="authPassword">Password</label><input class="field" id="authPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters"></div>
+      <div class="formgroup full" style="display:flex;gap:10px;flex-wrap:wrap"><button class="button primary" type="submit" id="signInButton">Sign in</button><button class="button" type="button" id="signUpButton">Create account</button><button class="button" type="button" id="signOutButton" style="display:none">Sign out</button></div>
+    </form>
+    <div class="notice" id="authNotice">Your collection is private to your account. If email confirmation is enabled, confirm your address before signing in.</div>
+  </section>
+
   <section class="section active" id="dashboard">
     <div class="grid stats">
       <div class="stat"><div class="stathead">Collection value <span class="staticon">◈</span></div><div class="statvalue" id="statValue">$0.00</div><div class="statnote">Based on values you enter</div></div>
@@ -60,7 +70,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
     </div>
     <div class="toolbar"><input id="searchCards" class="field search" placeholder="Search player, set, sport…"><select id="filterSport" class="field" style="max-width:190px"><option value="">All sports</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
     <div class="tablewrap"><table class="table"><thead><tr><th>Card</th><th>Sport / Condition</th><th>Cost</th><th>Est. value</th><th>Unrealized P/L</th><th></th></tr></thead><tbody id="cardRows"><tr><td colspan="6" class="empty">No cards yet. Add a card to start your catalog.</td></tr></tbody></table></div>
-    <div class="notice">This prototype stores entries in this browser only. It does not yet sync across devices or save to a user account.</div>
+    <div class="notice">Cards are saved to your Supabase account when you are signed in. Pricing is still manually entered; live market values are not connected.</div>
   </section>
 
   <section class="section" id="roi">
@@ -103,27 +113,91 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
 </main>
 </div>
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const $=id=>document.getElementById(id);let cards=[];
+const SUPABASE_URL = 'https://hhkfpnvljgrxbnyykfpt.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vq0hU4I8TLom4Q2olsfClA_M5aFaJ8L';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const $=id=>document.getElementById(id);
+let cards=[];
+let currentUser=null;
 const money=n=>Number(n||0).toLocaleString('en-US',{style:'currency',currency:'USD'});
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(msg){$('toast').textContent=msg;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2300)}
+function authMessage(msg,isError=false){$('authNotice').textContent=msg;$('authNotice').style.color=isError?'var(--red)':'#b9c9e1'}
+function setAuthUI(user){
+  currentUser=user||null;
+  $('connectionStatus').textContent=user?'Connected':'Not signed in';
+  $('connectionStatus').style.background=user?'#193c38':'#26334b';
+  $('connectionStatus').style.color=user?'var(--green)':'var(--muted)';
+  $('authHeading').textContent=user?'Your collection is connected':'Connect your collection';
+  $('authMessage').textContent=user?('Signed in as '+user.email+'. Your cards sync through Supabase.'): 'Sign in or create an account to save cards securely across sessions.';
+  $('authEmail').style.display=user?'none':'block';
+  $('authPassword').style.display=user?'none':'block';
+  document.querySelectorAll('#authForm label[for="authEmail"],#authForm label[for="authPassword"]').forEach(el=>el.style.display=user?'none':'block');
+  $('signInButton').style.display=user?'none':'inline-block';
+  $('signUpButton').style.display=user?'none':'inline-block';
+  $('signOutButton').style.display=user?'inline-block':'none';
+  $('authPanel').style.display='block';
+}
 function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===page));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));let titles={dashboard:['Good morning, collector.','Your collection at a glance. Make your next move a smart one.'],collection:['My Collection','Your cards, cataloged your way.'],roi:['ROI Calculator','Know the numbers before you buy or sell.'],marketing:['AI Marketing Studio','Create content that helps your cards stand out.'],flip:['Flip IQ','Evaluate a potential deal before committing your money.']};$('pageTitle').textContent=titles[page][0];$('pageSubtitle').textContent=titles[page][1];window.scrollTo({top:0,behavior:'smooth'});if(page==='collection')renderCards()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{go(b.dataset.goto);if(b.dataset.goto==='collection')$('addPanel').style.display='block'}));
-$('showAdd').onclick=()=>{$('addPanel').style.display='block';$('cardName').focus()};
+$('showAdd').onclick=()=>{if(!currentUser){authMessage('Please sign in before saving cards.',true);$('authEmail').focus();return}$('addPanel').style.display='block';$('cardName').focus()};
 $('cancelAdd').onclick=()=>{$('addPanel').style.display='none'};
-function renderCards(){let q=$('searchCards').value.toLowerCase(),sport=$('filterSport').value;let list=cards.filter(c=>(!sport||c.sport===sport)&&[c.name,c.set,c.sport,c.condition].join(' ').toLowerCase().includes(q));$('cardRows').innerHTML=list.length?list.map(c=>`<tr><td><strong>${safe(c.name)}</strong><small>${safe(c.set||'Set / number not entered')}</small></td><td>${safe(c.sport)}<small>${safe(c.condition||'Condition not entered')}</small></td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td><button class="button" data-remove="${c.id}">Remove</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No matching cards found.</td></tr>';document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{cards=cards.filter(c=>c.id!==Number(b.dataset.remove));renderCards();updateStats();toast('Card removed from this browser')});$('recentCards').innerHTML=cards.length?cards.slice(-3).reverse().map((c,i)=>`<div class="holding"><div class="cardthumb ${i===1?'purp':i===2?'gold':''}">CARD</div><div class="holdinginfo"><strong>${safe(c.name)}</strong><small>${safe(c.set||c.sport)}</small></div><div class="holdingval">${money(c.value)}<small>${money(c.value-c.cost)} P/L</small></div></div>`).join(''):'<div class="empty">Your collection is waiting.<br><button class="button primary" data-goto="collection" style="margin-top:12px">＋ Add a card</button></div>';document.querySelectorAll('#recentCards [data-goto]').forEach(b=>b.onclick=()=>{go('collection');$('addPanel').style.display='block'});}
+function fromDb(row){return {id:row.id,name:row.player_name,set:row.year_set_card_number||'',sport:row.sport||'Other',condition:row.condition_grade||'',cost:Number(row.purchase_cost)||0,value:Number(row.estimated_value)||0,notes:row.notes||''}}
+async function loadCards(){
+  if(!currentUser){cards=[];updateStats();return}
+  const {data,error}=await db.from('cards').select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').order('created_at',{ascending:false});
+  if(error){authMessage('Signed in, but cards could not be loaded: '+error.message,true);return}
+  cards=(data||[]).map(fromDb);updateStats();
+}
+function renderCards(){
+ let q=$('searchCards').value.toLowerCase(),sport=$('filterSport').value;
+ let list=cards.filter(c=>(!sport||c.sport===sport)&&[c.name,c.set,c.sport,c.condition].join(' ').toLowerCase().includes(q));
+ $('cardRows').innerHTML=list.length?list.map(c=>`<tr><td><strong>${safe(c.name)}</strong><small>${safe(c.set||'Set / number not entered')}</small></td><td>${safe(c.sport)}<small>${safe(c.condition||'Condition not entered')}</small></td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td><button class="button" data-remove="${safe(c.id)}">Remove</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">'+(currentUser?'No matching cards found.':'Sign in to load your saved collection.')+'</td></tr>';
+ document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{if(!currentUser)return;const {error}=await db.from('cards').delete().eq('id',b.dataset.remove);if(error){toast('Could not remove card: '+error.message);return}cards=cards.filter(c=>String(c.id)!==String(b.dataset.remove));updateStats();toast('Card removed from your collection')});
+ $('recentCards').innerHTML=cards.length?cards.slice(0,3).map((c,i)=>`<div class="holding"><div class="cardthumb ${i===1?'purp':i===2?'gold':''}">CARD</div><div class="holdinginfo"><strong>${safe(c.name)}</strong><small>${safe(c.set||c.sport)}</small></div><div class="holdingval">${money(c.value)}<small>${money(c.value-c.cost)} P/L</small></div></div>`).join(''):'<div class="empty">Your collection is waiting.<br><button class="button primary" data-goto="collection" style="margin-top:12px">＋ Add a card</button></div>';
+ document.querySelectorAll('#recentCards [data-goto]').forEach(b=>b.onclick=()=>{go('collection');$('addPanel').style.display='block'});
+}
 function updateStats(){let value=cards.reduce((a,c)=>a+c.value,0),cost=cards.reduce((a,c)=>a+c.cost,0),profit=value-cost;$('statValue').textContent=money(value);$('statInvested').textContent=money(cost);$('statProfit').textContent=(profit>0?'+':'')+money(profit);$('statProfit').style.color=profit>=0?'var(--green)':'var(--red)';$('statCount').textContent=cards.length;renderCards()}
-$('cardForm').onsubmit=e=>{e.preventDefault();cards.push({id:Date.now(),name:$('cardName').value.trim(),set:$('cardSet').value.trim(),sport:$('cardSport').value,condition:$('cardCondition').value.trim(),cost:Math.max(0,Number($('cardCost').value)||0),value:Math.max(0,Number($('cardValue').value)||0),notes:$('cardNotes').value.trim()});e.target.reset();$('cardCost').value=0;$('cardValue').value=0;$('addPanel').style.display='none';updateStats();toast('Card added to your catalog')};
+$('cardForm').onsubmit=async e=>{
+ e.preventDefault();
+ if(!currentUser){authMessage('Please sign in before saving cards.',true);return}
+ const record={user_id:currentUser.id,player_name:$('cardName').value.trim(),year_set_card_number:$('cardSet').value.trim()||null,sport:$('cardSport').value,condition_grade:$('cardCondition').value.trim()||null,purchase_cost:Math.max(0,Number($('cardCost').value)||0),estimated_value:Math.max(0,Number($('cardValue').value)||0),notes:$('cardNotes').value.trim()||null};
+ const {data,error}=await db.from('cards').insert(record).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').single();
+ if(error){toast('Could not save card: '+error.message);return}
+ cards.unshift(fromDb(data));e.target.reset();$('cardCost').value=0;$('cardValue').value=0;$('addPanel').style.display='none';updateStats();toast('Card saved to your Supabase collection')
+};
 $('searchCards').oninput=renderCards;$('filterSport').onchange=renderCards;
+$('authForm').addEventListener('submit',async e=>{
+ e.preventDefault();const email=$('authEmail').value.trim(),password=$('authPassword').value;
+ $('signInButton').disabled=true;
+ const {data,error}=await db.auth.signInWithPassword({email,password});
+ $('signInButton').disabled=false;
+ if(error){authMessage(error.message,true);return}
+ setAuthUI(data.user);authMessage('You are signed in. Loading your saved cards…');await loadCards();toast('Signed in successfully')
+});
+$('signUpButton').onclick=async()=>{
+ const email=$('authEmail').value.trim(),password=$('authPassword').value;
+ if(!email||!password){authMessage('Enter an email and password first.',true);return}
+ $('signUpButton').disabled=true;
+ const {data,error}=await db.auth.signUp({email,password});
+ $('signUpButton').disabled=false;
+ if(error){authMessage(error.message,true);return}
+ if(data.session&&data.user){setAuthUI(data.user);authMessage('Account created. Loading your collection…');await loadCards();toast('Account created')}
+ else authMessage('Account created. Check your email for a confirmation link, then return here and sign in.')
+};
+$('signOutButton').onclick=async()=>{const {error}=await db.auth.signOut();if(error){authMessage(error.message,true);return}setAuthUI(null);cards=[];updateStats();authMessage('You are signed out. Sign in again to access your saved collection.');toast('Signed out')};
 function calcROI(prefix){let buy=Number($(prefix+'Buy').value)||0,sell=Number($(prefix+'Sell').value)||0,fees=Math.min(100,Math.max(0,Number($(prefix+'Fees').value)||0))/100,ship=Number($(prefix+'Ship').value)||0,other=Number($(prefix+'Other').value)||0,net=sell*(1-fees)-ship-other,profit=net-buy,basis=buy+ship+other,roi=basis?profit/basis*100:0,br=(1-fees)>0?(buy+ship+other)/(1-fees):0;$('roiProfit').textContent=money(profit);$('roiProfit').style.color=profit>=0?'var(--green)':'var(--red)';$('roiPercent').textContent=roi.toFixed(1)+'%';$('roiNet').textContent=money(net);$('roiBasis').textContent=money(basis);$('roiBreak').textContent=money(br)}
 ['roiBuy','roiSell','roiFees','roiShip','roiOther'].forEach(id=>$(id).addEventListener('input',()=>calcROI('roi')));
 function analyzeFlip(){let buy=Number($('flipAsk').value)||0,sell=Number($('flipResale').value)||0,fee=Math.min(100,Math.max(0,Number($('flipFee').value)||0))/100,cost=Number($('flipCosts').value)||0,net=sell*(1-fee)-cost,profit=net-buy,roi=(buy+cost)?profit/(buy+cost)*100:0,br=(1-fee)>0?(buy+cost)/(1-fee):0;$('flipProfit').textContent=money(profit);$('flipProfit').style.color=profit>=0?'var(--green)':'var(--red)';$('flipRoi').textContent=roi.toFixed(1)+'%';$('flipNet').textContent=money(net);$('flipBreak').textContent=money(br);$('flipVerdict').textContent=profit>0?'Potentially profitable on these assumptions. Verify sold comps and risk.':'This scenario is not profitable at the entered resale price.'}
 $('analyzeFlip').onclick=analyzeFlip;
-$('generateCopy').onclick=()=>{let name=$('marketCard').value.trim()||'[Card / Player]',platform=$('marketPlatform').value,tone=$('marketTone').value,details=$('marketDetails').value.trim();let title=`${name} | Sports Card Collector Listing`;let body;if(platform==='eBay listing')body=`TITLE\\n${title}\\n\\nDESCRIPTION\\nOffering ${name}. ${details?details+'. ':''}Please review the photos carefully for condition and exact details. Card shown is the card you will receive. Ships securely with protective packaging.\\n\\nPlease verify all card details, condition, and shipping terms before publishing.`;else if(platform==='Whatnot auction')body=`🏆 CARD UP FOR GRABS: ${name}\\n\\n${details?details+'\\n\\n':''}Take a close look at the card and ask any questions before the auction. Please review photos and condition details. Good luck and happy collecting!\\n\\n#SportsCards #TradingCards #CardCollectors`;else if(platform==='TikTok / YouTube Shorts')body=`VIDEO IDEA: “A closer look at ${name}”\\n\\nHOOK: “Would you add this card to your collection?”\\nSHOT LIST: 1) Quick front reveal 2) Close-up of key details 3) Show the back and condition 4) Share verified facts and your asking price.\\nCAPTION: ${name}${details?' — '+details:''}\\n#SportsCards #CardCollector #TradingCards`;else body=`${tone==='High-energy collector'?'🔥 COLLECTORS, CHECK THIS OUT!':tone==='Short and punchy'?'CARD SPOTLIGHT:':'📣 CARD SPOTLIGHT'}\\n\\n${name}\\n${details?details+'\\n\\n':''}A closer look for fellow collectors. Check out the photos, ask questions, and message me for details.\\n\\n#SportsCards #TradingCards #CardCollectors #SportsCardCommunity`; $('marketingOutput').textContent=body;toast('Draft generated — review before posting')};
+$('generateCopy').onclick=()=>{let name=$('marketCard').value.trim()||'[Card / Player]',platform=$('marketPlatform').value,tone=$('marketTone').value,details=$('marketDetails').value.trim();let title=`${name} | Sports Card Collector Listing`;let body;if(platform==='eBay listing')body=`TITLE\n${title}\n\nDESCRIPTION\nOffering ${name}. ${details?details+'. ':''}Please review the photos carefully for condition and exact details. Card shown is the card you will receive. Ships securely with protective packaging.\n\nPlease verify all card details, condition, and shipping terms before publishing.`;else if(platform==='Whatnot auction')body=`🏆 CARD UP FOR GRABS: ${name}\n\n${details?details+'\n\n':''}Take a close look at the card and ask any questions before the auction. Please review photos and condition details. Good luck and happy collecting!\n\n#SportsCards #TradingCards #CardCollectors`;else if(platform==='TikTok / YouTube Shorts')body=`VIDEO IDEA: “A closer look at ${name}”\n\nHOOK: “Would you add this card to your collection?”\nSHOT LIST: 1) Quick front reveal 2) Close-up of key details 3) Show the back and condition 4) Share verified facts and your asking price.\nCAPTION: ${name}${details?' — '+details:''}\n#SportsCards #CardCollector #TradingCards`;else body=`${tone==='High-energy collector'?'🔥 COLLECTORS, CHECK THIS OUT!':tone==='Short and punchy'?'CARD SPOTLIGHT:':'📣 CARD SPOTLIGHT'}\n\n${name}\n${details?details+'\n\n':''}A closer look for fellow collectors. Check out the photos, ask questions, and message me for details.\n\n#SportsCards #TradingCards #CardCollectors #SportsCardCommunity`; $('marketingOutput').textContent=body;toast('Draft generated — review before posting')};
 $('copyDraft').onclick=async()=>{let t=$('marketingOutput').textContent;if(!t||t==='Your generated draft will appear here.'){toast('Generate a draft first');return}try{await navigator.clipboard.writeText(t);toast('Draft copied')}catch(e){toast('Select and copy the draft manually')}};
 calcROI('roi');analyzeFlip();updateStats();
+db.auth.getSession().then(async({data,error})=>{if(error){authMessage(error.message,true);return}const user=data.session?.user||null;setAuthUI(user);if(user){authMessage('Connected. Loading your saved collection…');await loadCards()}else authMessage('Sign in or create an account to sync cards. Your existing RLS policies protect collection data.')});
+db.auth.onAuthStateChange((_event,session)=>{const user=session?.user||null;if((user?.id||null)!==(currentUser?.id||null)){setAuthUI(user);if(user)loadCards();else{cards=[];updateStats()}}});
 </script>
 </body>
 </html>
