@@ -184,7 +184,7 @@ function setAuthUI(user){
 function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===page));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));let titles={dashboard:['Good morning, collector.','Your collection at a glance. Make your next move a smart one.'],mistereai:['Mister E AI','Scan cards, review AI suggestions, and save them to your collection.'],collection:['My Collection','Your cards, cataloged your way.'],roi:['ROI Calculator','Know the numbers before you buy or sell.'],marketing:['AI Marketing Studio','Create content that helps your cards stand out.'],flip:['Flip IQ','Evaluate a potential deal before committing your money.']};$('pageTitle').textContent=titles[page][0];$('pageSubtitle').textContent=titles[page][1];window.scrollTo({top:0,behavior:'smooth'});if(page==='collection')renderCards()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.goto)));
-$('showAdd').style.display='none';
+if($('showAdd')) $('showAdd').style.display='none';
 $('cancelAdd').onclick=()=>resetCardForm();$('cancelEdit').onclick=()=>resetCardForm();
 function fromDb(row){return {id:row.id,name:row.player_name,set:row.year_set_card_number||'',sport:row.sport||'Other',condition:row.condition_grade||'',cost:Number(row.purchase_cost)||0,value:Number(row.estimated_value)||0,notes:row.notes||'',frontPath:row.image_front_path||null,backPath:row.image_back_path||null,frontUrl:null,backUrl:null}}
 async function loadCards(){
