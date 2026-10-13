@@ -155,6 +155,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, 
 const $=id=>document.getElementById(id);
 let cards=[];
 let currentUser=null;
+const CARD_IMAGE_BUCKET='card-images';
 const money=n=>Number(n||0).toLocaleString('en-US',{style:'currency',currency:'USD'});
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(msg){$('toast').textContent=msg;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2300)}
@@ -180,18 +181,20 @@ document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',(
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{go(b.dataset.goto);if(b.dataset.goto==='collection')$('addPanel').style.display='block'}));
 $('showAdd').onclick=()=>{if(!currentUser){authMessage('Please sign in before saving cards.',true);$('authEmail').focus();return}$('addPanel').style.display='block';$('cardName').focus()};
 $('cancelAdd').onclick=()=>resetCardForm();$('cancelEdit').onclick=()=>resetCardForm();
-function fromDb(row){return {id:row.id,name:row.player_name,set:row.year_set_card_number||'',sport:row.sport||'Other',condition:row.condition_grade||'',cost:Number(row.purchase_cost)||0,value:Number(row.estimated_value)||0,notes:row.notes||''}}
+function fromDb(row){return {id:row.id,name:row.player_name,set:row.year_set_card_number||'',sport:row.sport||'Other',condition:row.condition_grade||'',cost:Number(row.purchase_cost)||0,value:Number(row.estimated_value)||0,notes:row.notes||'',frontPath:row.image_front_path||null,backPath:row.image_back_path||null,frontUrl:null,backUrl:null}}
 async function loadCards(){
   if(!currentUser){cards=[];updateStats();return}
-  const {data,error}=await db.from('cards').select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').order('created_at',{ascending:false});
+  const {data,error}=await db.from('cards').select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,image_front_path,image_back_path,created_at').order('created_at',{ascending:false});
   if(error){authMessage('Signed in, but cards could not be loaded: '+error.message,true);return}
-  cards=(data||[]).map(fromDb);updateStats();
+  cards=(data||[]).map(fromDb);
+  await Promise.all(cards.map(async card=>{if(card.frontPath){const r=await db.storage.from(CARD_IMAGE_BUCKET).createSignedUrl(card.frontPath,3600);if(!r.error)card.frontUrl=r.data.signedUrl}if(card.backPath){const r=await db.storage.from(CARD_IMAGE_BUCKET).createSignedUrl(card.backPath,3600);if(!r.error)card.backUrl=r.data.signedUrl}}));
+  updateStats();
 }
 function renderCards(){
  let q=$('searchCards').value.toLowerCase(),sport=$('filterSport').value,sort=$('sortCards').value;
  let list=cards.filter(c=>(!sport||c.sport===sport)&&[c.name,c.set,c.sport,c.condition,c.notes].join(' ').toLowerCase().includes(q));
  list.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='valueHigh'?b.value-a.value:sort==='valueLow'?a.value-b.value:sort==='profitHigh'?(b.value-b.cost)-(a.value-a.cost):sort==='costHigh'?b.cost-a.cost:String(b.id).localeCompare(String(a.id)));
- $('cardRows').innerHTML=list.length?list.map(c=>`<tr><td><strong>${safe(c.name)}</strong><small>${safe(c.set||'Set / number not entered')}</small></td><td>${safe(c.sport)}<small>${safe(c.condition||'Condition not entered')}</small></td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td><div style="display:flex;gap:6px"><button class="button" data-edit="${safe(c.id)}">Edit</button><button class="button" data-remove="${safe(c.id)}">Remove</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">'+(currentUser?'No matching cards found.':'Sign in to load your saved collection.')+'</td></tr>';
+ $('cardRows').innerHTML=list.length?list.map(c=>`<tr><td>${c.frontUrl?`<img src="${safe(c.frontUrl)}" alt="${safe(c.name)} front" style="width:46px;height:62px;object-fit:cover;border-radius:6px;float:left;margin:0 10px 5px 0">`:''}<strong>${safe(c.name)}</strong><small>${safe(c.set||'Set / number not entered')}</small>${c.backUrl?`<small><a href="${safe(c.backUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">View back image</a></small>`:''}</td><td>${safe(c.sport)}<small>${safe(c.condition||'Condition not entered')}</small></td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td><div style="display:flex;gap:6px"><button class="button" data-edit="${safe(c.id)}">Edit</button><button class="button" data-remove="${safe(c.id)}">Remove</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">'+(currentUser?'No matching cards found.':'Sign in to load your saved collection.')+'</td></tr>';
  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
  document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{if(!currentUser)return;if(!confirm('Remove this card from your collection? This cannot be undone.'))return;const {error}=await db.from('cards').delete().eq('id',b.dataset.remove);if(error){toast('Could not remove card: '+error.message);return}cards=cards.filter(c=>String(c.id)!==String(b.dataset.remove));updateStats();toast('Card removed from your collection')});
  $('recentCards').innerHTML=cards.length?cards.slice(0,3).map((c,i)=>`<div class="holding"><div class="cardthumb ${i===1?'purp':i===2?'gold':''}">CARD</div><div class="holdinginfo"><strong>${safe(c.name)}</strong><small>${safe(c.set||c.sport)}</small></div><div class="holdingval">${money(c.value)}<small>${money(c.value-c.cost)} P/L</small></div></div>`).join(''):'<div class="empty">Your collection is waiting.<br><button class="button primary" data-goto="collection" style="margin-top:12px">＋ Add a card</button></div>';
@@ -343,10 +346,13 @@ $('saveScannedCard').onclick=async()=>{
  const name=$('scanName').value.trim();if(!name){$('scanName').focus();toast('Enter a player or card name first');return}
  const record={user_id:currentUser.id,player_name:name,year_set_card_number:$('scanSet').value.trim()||null,sport:$('scanResultSport').value,condition_grade:$('scanCondition').value.trim()||null,purchase_cost:Math.max(0,Number($('scanCost').value)||0),estimated_value:Math.max(0,Number($('scanValue').value)||0),notes:$('scanDetails').value.trim()||null};
  const button=$('saveScannedCard');button.disabled=true;
- const {data,error}=await db.from('cards').insert(record).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').single();
- button.disabled=false;
- if(error){$('scanStatus').textContent='Could not save card: '+error.message;return}
- cards.unshift(fromDb(data));updateStats();$('scanStatus').textContent='Card saved to your collection.';toast('Identified card saved to My Collection');$('scanResult').style.display='none';$('scanFront').value='';$('scanBack').value='';$('scanFrontCamera').value='';$('scanBackCamera').value='';previewImage('scanFront','scanFrontPreview','scanFrontCamera');previewImage('scanBack','scanBackPreview','scanBackCamera');
+ const frontFile=$('scanFrontCamera').files?.[0]||$('scanFront').files?.[0],backFile=$('scanBackCamera').files?.[0]||$('scanBack').files?.[0];
+ button.textContent='Saving…';
+ const {data,error}=await db.from('cards').insert(record).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,image_front_path,image_back_path,created_at').single();
+ if(error){button.disabled=false;button.textContent='Save to My Collection';$('scanStatus').textContent='Could not save card: '+error.message;return}
+ const saved=fromDb(data);let uploadErrors=[];
+ for(const [side,file] of [['front',frontFile],['back',backFile]]){if(!file)continue;const path=`${currentUser.id}/${saved.id}/${side}.jpg`;const up=await db.storage.from(CARD_IMAGE_BUCKET).upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});if(up.error){uploadErrors.push(side+': '+up.error.message);continue}const field=side==='front'?'image_front_path':'image_back_path';const upd=await db.from('cards').update({[field]:path}).eq('id',saved.id);if(upd.error){uploadErrors.push(side+' image reference: '+upd.error.message);continue}if(side==='front')saved.frontPath=path;else saved.backPath=path;const signed=await db.storage.from(CARD_IMAGE_BUCKET).createSignedUrl(path,3600);if(!signed.error){if(side==='front')saved.frontUrl=signed.data.signedUrl;else saved.backUrl=signed.data.signedUrl}}
+ button.disabled=false;button.textContent='Save to My Collection';cards.unshift(saved);updateStats();$('scanStatus').textContent=uploadErrors.length?'Card saved, but image upload issue: '+uploadErrors.join('; '):'Card and images saved to your collection.';toast(uploadErrors.length?'Card saved; check image upload message':'Card and images saved to My Collection');$('scanResult').style.display='none';$('scanFront').value='';$('scanBack').value='';$('scanFrontCamera').value='';$('scanBackCamera').value='';previewImage('scanFront','scanFrontPreview','scanFrontCamera');previewImage('scanBack','scanBackPreview','scanBackCamera');
 };
 $('discardScan').onclick=()=>{$('scanResult').style.display='none';scanAnalysis=null;$('scanStatus').textContent='Results discarded. Upload images to analyze another card.'};
 
