@@ -35,9 +35,10 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
     <form id="authForm" class="formgrid">
       <div class="formgroup"><label for="authEmail">Email</label><input class="field" id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com"></div>
       <div class="formgroup"><label for="authPassword">Password</label><input class="field" id="authPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters"></div>
-      <div class="formgroup full" style="display:flex;gap:10px;flex-wrap:wrap"><button class="button primary" type="submit" id="signInButton">Sign in</button><button class="button" type="button" id="signUpButton">Create account</button><button class="button" type="button" id="signOutButton" style="display:none">Sign out</button></div>
+      <div class="formgroup full" style="display:flex;gap:10px;flex-wrap:wrap"><button class="button primary" type="submit" id="signInButton">Sign in</button><button class="button" type="button" id="signUpButton">Create account</button><button class="button" type="button" id="forgotPasswordButton">Forgot password?</button><button class="button" type="button" id="signOutButton" style="display:none">Sign out</button></div>
     </form>
-    <div class="notice" id="authNotice">Your collection is private to your account. If email confirmation is enabled, confirm your address before signing in.</div>
+    <div class="notice" id="authNotice">Your collection is private to your account. Your session stays saved on this device, so you can return without signing in again. If email confirmation is enabled, confirm your address before signing in.</div>
+    <form id="resetPasswordForm" class="formgrid" style="display:none;margin-top:16px"><div class="formgroup full"><label for="newPassword">New password</label><input class="field" id="newPassword" type="password" autocomplete="new-password" minlength="6" required placeholder="At least 6 characters"></div><div class="formgroup full"><button class="button primary" type="submit" id="saveNewPasswordButton">Save new password</button><button class="button" type="button" id="cancelPasswordReset">Cancel</button></div></form>
   </section>
 
   <section class="section active" id="dashboard">
@@ -117,7 +118,14 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
 <script>
 const SUPABASE_URL = 'https://hhkfpnvljgrxbnyykfpt.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vq0hU4I8TLom4Q2olsfClA_M5aFaJ8L';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage
+  }
+});
 const $=id=>document.getElementById(id);
 let cards=[];
 let currentUser=null;
@@ -138,6 +146,7 @@ function setAuthUI(user){
   $('signInButton').style.display=user?'none':'inline-block';
   $('signUpButton').style.display=user?'none':'inline-block';
   $('signOutButton').style.display=user?'inline-block':'none';
+  $('authForm').style.display=user?'none':'grid';
   $('authPanel').style.display='block';
 }
 function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===page));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));let titles={dashboard:['Good morning, collector.','Your collection at a glance. Make your next move a smart one.'],collection:['My Collection','Your cards, cataloged your way.'],roi:['ROI Calculator','Know the numbers before you buy or sell.'],marketing:['AI Marketing Studio','Create content that helps your cards stand out.'],flip:['Flip IQ','Evaluate a potential deal before committing your money.']};$('pageTitle').textContent=titles[page][0];$('pageSubtitle').textContent=titles[page][1];window.scrollTo({top:0,behavior:'smooth'});if(page==='collection')renderCards()}
@@ -212,6 +221,29 @@ $('signUpButton').onclick=async()=>{
  if(data.session&&data.user){setAuthUI(data.user);authMessage('Account created. Loading your collection…');await loadCards();toast('Account created')}
  else authMessage('Account created. Check your email for a confirmation link, then return here and sign in.')
 };
+$('forgotPasswordButton').onclick=async()=>{
+ const email=$('authEmail').value.trim();
+ if(!email){authMessage('Enter your account email above first, then select Forgot password again.',true);$('authEmail').focus();return}
+ $('forgotPasswordButton').disabled=true;
+ const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:'https://cardboard-iq.vercel.app/'});
+ $('forgotPasswordButton').disabled=false;
+ if(error){authMessage('Could not send reset email: '+error.message,true);return}
+ authMessage('If an account exists for '+email+', a password reset link has been sent. Check your inbox and spam folder.');
+ toast('Password reset email requested')
+};
+$('resetPasswordForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const password=$('newPassword').value;
+ if(password.length<6){authMessage('Use a password with at least 6 characters.',true);return}
+ $('saveNewPasswordButton').disabled=true;
+ const {error}=await db.auth.updateUser({password});
+ $('saveNewPasswordButton').disabled=false;
+ if(error){authMessage('Could not update password: '+error.message,true);return}
+ $('resetPasswordForm').style.display='none';$('newPassword').value='';
+ authMessage('Password updated successfully. You can keep using Cardboard IQ.');
+ toast('Password updated')
+});
+$('cancelPasswordReset').onclick=()=>{$('resetPasswordForm').style.display='none';$('newPassword').value='';authMessage('Password reset cancelled.')};
 $('signOutButton').onclick=async()=>{const {error}=await db.auth.signOut();if(error){authMessage(error.message,true);return}setAuthUI(null);cards=[];updateStats();authMessage('You are signed out. Sign in again to access your saved collection.');toast('Signed out')};
 function calcROI(prefix){let buy=Number($(prefix+'Buy').value)||0,sell=Number($(prefix+'Sell').value)||0,fees=Math.min(100,Math.max(0,Number($(prefix+'Fees').value)||0))/100,ship=Number($(prefix+'Ship').value)||0,other=Number($(prefix+'Other').value)||0,net=sell*(1-fees)-ship-other,profit=net-buy,basis=buy+ship+other,roi=basis?profit/basis*100:0,br=(1-fees)>0?(buy+ship+other)/(1-fees):0;$('roiProfit').textContent=money(profit);$('roiProfit').style.color=profit>=0?'var(--green)':'var(--red)';$('roiPercent').textContent=roi.toFixed(1)+'%';$('roiNet').textContent=money(net);$('roiBasis').textContent=money(basis);$('roiBreak').textContent=money(br)}
 ['roiBuy','roiSell','roiFees','roiShip','roiOther'].forEach(id=>$(id).addEventListener('input',()=>calcROI('roi')));
@@ -221,7 +253,16 @@ $('generateCopy').onclick=()=>{let name=$('marketCard').value.trim()||'[Card / P
 $('copyDraft').onclick=async()=>{let t=$('marketingOutput').textContent;if(!t||t==='Your generated draft will appear here.'){toast('Generate a draft first');return}try{await navigator.clipboard.writeText(t);toast('Draft copied')}catch(e){toast('Select and copy the draft manually')}};
 calcROI('roi');analyzeFlip();updateStats();
 db.auth.getSession().then(async({data,error})=>{if(error){authMessage(error.message,true);return}const user=data.session?.user||null;setAuthUI(user);if(user){authMessage('Connected. Loading your saved collection…');await loadCards()}else authMessage('Sign in or create an account to sync cards. Your existing RLS policies protect collection data.')});
-db.auth.onAuthStateChange((_event,session)=>{const user=session?.user||null;if((user?.id||null)!==(currentUser?.id||null)){setAuthUI(user);if(user)loadCards();else{cards=[];updateStats()}}});
+db.auth.onAuthStateChange((_event,session)=>{
+ const user=session?.user||null;
+ if(_event==='PASSWORD_RECOVERY'){
+   $('resetPasswordForm').style.display='grid';
+   $('authForm').style.display='none';
+   $('authHeading').textContent='Choose a new password';
+   authMessage('Enter a new password for your Cardboard IQ account.');
+ }
+ if((user?.id||null)!==(currentUser?.id||null)){setAuthUI(user);if(user)loadCards();else{cards=[];updateStats()}}
+});
 </script>
 </body>
 </html>
