@@ -20,6 +20,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
   <div class="navlabel">WORKSPACE</div>
   <nav class="nav" aria-label="Main navigation">
     <button class="active" data-page="dashboard"><span class="ico">▦</span>Dashboard</button>
+    <button data-page="mistereai"><span class="ico">✦</span>Mister E AI</button>
     <button data-page="collection"><span class="ico">▤</span>My Collection</button>
     <button data-page="roi"><span class="ico">⌁</span>ROI Calculator</button>
     <button data-page="marketing"><span class="ico">✦</span>AI Marketing Studio</button>
@@ -57,31 +58,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
 
   <section class="section" id="collection">
     <div class="sectionhead"><div><h2>My Collection</h2><p>Catalog your cards and keep your numbers in one place.</p></div><button class="button primary" id="showAdd">＋ Add card</button></div>
-
-    <div class="panel" id="scanPanel" style="margin-bottom:18px">
-      <div class="panelhead"><div><h2>✦ Scan & Identify a Card</h2><p>Upload the front and back. AI will suggest card details for you to review before saving.</p></div><span class="pill">AI Scanner</span></div>
-      <div class="formgrid">
-        <div class="formgroup"><label for="scanFront">Front image *</label><div style="display:grid;gap:8px"><div><label class="upload-choice" for="scanFront">🖼️ Choose existing image</label><input class="upload-input-hidden" id="scanFront" type="file" accept="image/*" required></div><div><label class="upload-choice" for="scanFrontCamera">📷 Take a new photo</label><input class="upload-input-hidden" id="scanFrontCamera" type="file" accept="image/*" capture="environment"></div></div><img id="scanFrontPreview" alt="Front preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
-        <div class="formgroup"><label for="scanBack">Back image (recommended)</label><div style="display:grid;gap:8px"><div><label class="upload-choice" for="scanBack">🖼️ Choose existing image</label><input class="upload-input-hidden" id="scanBack" type="file" accept="image/*"></div><div><label class="upload-choice" for="scanBackCamera">📷 Take a new photo</label><input class="upload-input-hidden" id="scanBackCamera" type="file" accept="image/*" capture="environment"></div></div><img id="scanBackPreview" alt="Back preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
-        <div class="formgroup"><label for="scanSport">Sport / category</label><select class="field" id="scanSport"><option>Auto Detect</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
-        <div class="formgroup" style="display:flex;align-items:end"><button class="button primary" type="button" id="analyzeCardButton">Identify card</button></div>
-        <div class="formgroup full"><div class="notice" id="scanStatus" role="status">Upload clear images of both sides. AI results may need correction; identification and market value are not guaranteed.</div></div>
-      </div>
-      <div id="scanResult" style="display:none;margin-top:18px">
-        <div class="panelhead"><div><h2>Review identification</h2><p>Confirm the fields below before saving to your collection.</p></div></div>
-        <div class="formgrid">
-          <div class="formgroup"><label for="scanName">Player / Card name *</label><input class="field" id="scanName" required></div>
-          <div class="formgroup"><label for="scanSet">Year, set & card number</label><input class="field" id="scanSet"></div>
-          <div class="formgroup"><label for="scanResultSport">Sport</label><select class="field" id="scanResultSport"><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
-          <div class="formgroup"><label for="scanCondition">Condition observations</label><input class="field" id="scanCondition"></div>
-          <div class="formgroup"><label for="scanCost">Purchase cost ($)</label><input class="field" id="scanCost" type="number" min="0" step=".01" value="0"></div>
-          <div class="formgroup"><label for="scanValue">Estimated value ($)</label><input class="field" id="scanValue" type="number" min="0" step=".01" value="0"><small style="color:var(--muted)">AI does not provide a verified market price. Enter your own estimate.</small></div>
-          <div class="formgroup full"><label for="scanDetails">Identification notes</label><textarea class="field" id="scanDetails" rows="3"></textarea></div>
-          <div class="formgroup full"><button class="button primary" type="button" id="saveScannedCard">Save to My Collection</button><button class="button" type="button" id="discardScan">Discard results</button></div>
-        </div>
-        <div class="notice" id="scanResearch" style="display:none"></div>
-      </div>
-    </div>
 
     <div class="panel" id="addPanel" style="margin-bottom:18px;display:none"><div class="panelhead"><div><h2>Add a card</h2><p>Enter what you know. You can edit the details later.</p></div></div>
       <form id="cardForm" class="formgrid">
@@ -128,7 +104,36 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
   <section class="section" id="flip">
     <div class="sectionhead"><div><h2>Flip IQ</h2><p>Screen a potential deal with the numbers you have.</p></div></div>
     <div class="grid dashboardgrid"><div class="panel"><div class="panelhead"><div><h2>Deal analyzer</h2><p>Enter an asking price and your target resale estimate.</p></div></div><div class="formgrid">
-      <div class="formgroup full"><label for="flipName">Card / deal name</label><input class="field" id="flipName" placeholder="e.g. Rookie parallel, raw"></div>
+      <div class="formgroup full"<section class="section" id="mistereai">
+    <div class="sectionhead"><div><h2>Mister E AI</h2><p>Scan a trading card, review its identification, and save it to your collection.</p></div></div>
+    <div class="panel" id="scanPanel" style="margin-bottom:18px">
+      <div class="panelhead"><div><h2>✦ Scan & Identify a Card</h2><p>Upload the front and back. AI will suggest card details for you to review before saving.</p></div><span class="pill">AI Scanner</span></div>
+      <div class="formgrid">
+        <div class="formgroup"><label for="scanFront">Front image *</label><div style="display:grid;gap:8px"><div><label class="upload-choice" for="scanFront">🖼️ Choose existing image</label><input class="upload-input-hidden" id="scanFront" type="file" accept="image/*" required></div><div><label class="upload-choice" for="scanFrontCamera">📷 Take a new photo</label><input class="upload-input-hidden" id="scanFrontCamera" type="file" accept="image/*" capture="environment"></div></div><img id="scanFrontPreview" alt="Front preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
+        <div class="formgroup"><label for="scanBack">Back image (recommended)</label><div style="display:grid;gap:8px"><div><label class="upload-choice" for="scanBack">🖼️ Choose existing image</label><input class="upload-input-hidden" id="scanBack" type="file" accept="image/*"></div><div><label class="upload-choice" for="scanBackCamera">📷 Take a new photo</label><input class="upload-input-hidden" id="scanBackCamera" type="file" accept="image/*" capture="environment"></div></div><img id="scanBackPreview" alt="Back preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
+        <div class="formgroup"><label for="scanSport">Sport / category</label><select class="field" id="scanSport"><option>Auto Detect</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
+        <div class="formgroup" style="display:flex;align-items:end"><button class="button primary" type="button" id="analyzeCardButton">Identify card</button></div>
+        <div class="formgroup full"><div class="notice" id="scanStatus" role="status">Upload clear images of both sides. AI results may need correction; identification and market value are not guaranteed.</div></div>
+      </div>
+      <div id="scanResult" style="display:none;margin-top:18px">
+        <div class="panelhead"><div><h2>Review identification</h2><p>Confirm the fields below before saving to your collection.</p></div></div>
+        <div class="formgrid">
+          <div class="formgroup"><label for="scanName">Player / Card name *</label><input class="field" id="scanName" required></div>
+          <div class="formgroup"><label for="scanSet">Year, set & card number</label><input class="field" id="scanSet"></div>
+          <div class="formgroup"><label for="scanResultSport">Sport</label><select class="field" id="scanResultSport"><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
+          <div class="formgroup"><label for="scanCondition">Condition observations</label><input class="field" id="scanCondition"></div>
+          <div class="formgroup"><label for="scanCost">Purchase cost ($)</label><input class="field" id="scanCost" type="number" min="0" step=".01" value="0"></div>
+          <div class="formgroup"><label for="scanValue">Estimated value ($)</label><input class="field" id="scanValue" type="number" min="0" step=".01" value="0"><small style="color:var(--muted)">AI does not provide a verified market price. Enter your own estimate.</small></div>
+          <div class="formgroup full"><label for="scanDetails">Identification notes</label><textarea class="field" id="scanDetails" rows="3"></textarea></div>
+          <div class="formgroup full"><button class="button primary" type="button" id="saveScannedCard">Save to My Collection</button><button class="button" type="button" id="discardScan">Discard results</button></div>
+        </div>
+        <div class="notice" id="scanResearch" style="display:none"></div>
+      </div>
+    </div>
+
+  </section>
+
+  ><label for="flipName">Card / deal name</label><input class="field" id="flipName" placeholder="e.g. Rookie parallel, raw"></div>
       <div class="formgroup"><label for="flipAsk">Asking price ($)</label><input class="field" id="flipAsk" type="number" min="0" step=".01" value="40"></div>
       <div class="formgroup"><label for="flipResale">Estimated resale ($)</label><input class="field" id="flipResale" type="number" min="0" step=".01" value="70"></div>
       <div class="formgroup"><label for="flipFee">Selling fees (%)</label><input class="field" id="flipFee" type="number" min="0" max="100" step=".1" value="13"></div>
@@ -176,7 +181,7 @@ function setAuthUI(user){
   $('authForm').style.display=user?'none':'grid';
   $('authPanel').style.display='block';
 }
-function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===page));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));let titles={dashboard:['Good morning, collector.','Your collection at a glance. Make your next move a smart one.'],collection:['My Collection','Your cards, cataloged your way.'],roi:['ROI Calculator','Know the numbers before you buy or sell.'],marketing:['AI Marketing Studio','Create content that helps your cards stand out.'],flip:['Flip IQ','Evaluate a potential deal before committing your money.']};$('pageTitle').textContent=titles[page][0];$('pageSubtitle').textContent=titles[page][1];window.scrollTo({top:0,behavior:'smooth'});if(page==='collection')renderCards()}
+function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===page));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));let titles={dashboard:['Good morning, collector.','Your collection at a glance. Make your next move a smart one.'],mistereai:['Mister E AI','Scan cards, review AI suggestions, and save them to your collection.'],collection:['My Collection','Your cards, cataloged your way.'],roi:['ROI Calculator','Know the numbers before you buy or sell.'],marketing:['AI Marketing Studio','Create content that helps your cards stand out.'],flip:['Flip IQ','Evaluate a potential deal before committing your money.']};$('pageTitle').textContent=titles[page][0];$('pageSubtitle').textContent=titles[page][1];window.scrollTo({top:0,behavior:'smooth'});if(page==='collection')renderCards()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{go(b.dataset.goto);if(b.dataset.goto==='collection')$('addPanel').style.display='block'}));
 $('showAdd').onclick=()=>{if(!currentUser){authMessage('Please sign in before saving cards.',true);$('authEmail').focus();return}$('addPanel').style.display='block';$('cardName').focus()};
