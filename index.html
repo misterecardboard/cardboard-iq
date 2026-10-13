@@ -57,6 +57,32 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
 
   <section class="section" id="collection">
     <div class="sectionhead"><div><h2>My Collection</h2><p>Catalog your cards and keep your numbers in one place.</p></div><button class="button primary" id="showAdd">＋ Add card</button></div>
+
+    <div class="panel" id="scanPanel" style="margin-bottom:18px">
+      <div class="panelhead"><div><h2>✦ Scan & Identify a Card</h2><p>Upload the front and back. AI will suggest card details for you to review before saving.</p></div><span class="pill">AI Scanner</span></div>
+      <div class="formgrid">
+        <div class="formgroup"><label for="scanFront">Front image *</label><input class="field" id="scanFront" type="file" accept="image/*" capture="environment" required><img id="scanFrontPreview" alt="Front preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
+        <div class="formgroup"><label for="scanBack">Back image (recommended)</label><input class="field" id="scanBack" type="file" accept="image/*" capture="environment"><img id="scanBackPreview" alt="Back preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
+        <div class="formgroup"><label for="scanSport">Sport / category</label><select class="field" id="scanSport"><option>Auto Detect</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
+        <div class="formgroup" style="display:flex;align-items:end"><button class="button primary" type="button" id="analyzeCardButton">Identify card</button></div>
+        <div class="formgroup full"><div class="notice" id="scanStatus" role="status">Upload clear images of both sides. AI results may need correction; identification and market value are not guaranteed.</div></div>
+      </div>
+      <div id="scanResult" style="display:none;margin-top:18px">
+        <div class="panelhead"><div><h2>Review identification</h2><p>Confirm the fields below before saving to your collection.</p></div></div>
+        <div class="formgrid">
+          <div class="formgroup"><label for="scanName">Player / Card name *</label><input class="field" id="scanName" required></div>
+          <div class="formgroup"><label for="scanSet">Year, set & card number</label><input class="field" id="scanSet"></div>
+          <div class="formgroup"><label for="scanResultSport">Sport</label><select class="field" id="scanResultSport"><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
+          <div class="formgroup"><label for="scanCondition">Condition observations</label><input class="field" id="scanCondition"></div>
+          <div class="formgroup"><label for="scanCost">Purchase cost ($)</label><input class="field" id="scanCost" type="number" min="0" step=".01" value="0"></div>
+          <div class="formgroup"><label for="scanValue">Estimated value ($)</label><input class="field" id="scanValue" type="number" min="0" step=".01" value="0"><small style="color:var(--muted)">AI does not provide a verified market price. Enter your own estimate.</small></div>
+          <div class="formgroup full"><label for="scanDetails">Identification notes</label><textarea class="field" id="scanDetails" rows="3"></textarea></div>
+          <div class="formgroup full"><button class="button primary" type="button" id="saveScannedCard">Save to My Collection</button><button class="button" type="button" id="discardScan">Discard results</button></div>
+        </div>
+        <div class="notice" id="scanResearch" style="display:none"></div>
+      </div>
+    </div>
+
     <div class="panel" id="addPanel" style="margin-bottom:18px;display:none"><div class="panelhead"><div><h2>Add a card</h2><p>Enter what you know. You can edit the details later.</p></div></div>
       <form id="cardForm" class="formgrid">
         <div class="formgroup"><label for="cardName">Player / Card name *</label><input class="field" id="cardName" required placeholder="e.g. Joe Burrow"></div>
@@ -245,6 +271,83 @@ $('resetPasswordForm').addEventListener('submit',async e=>{
 });
 $('cancelPasswordReset').onclick=()=>{$('resetPasswordForm').style.display='none';$('newPassword').value='';authMessage('Password reset cancelled.')};
 $('signOutButton').onclick=async()=>{const {error}=await db.auth.signOut();if(error){authMessage(error.message,true);return}setAuthUI(null);cards=[];updateStats();authMessage('You are signed out. Sign in again to access your saved collection.');toast('Signed out')};
+
+/* Card scanner powered by the Mister E AI analysis endpoint. */
+let scanAnalysis=null;
+function previewImage(inputId,previewId){
+ const file=$(inputId).files?.[0],img=$(previewId);
+ if(!file){img.removeAttribute('src');img.style.display='none';return}
+ if(!file.type.startsWith('image/')){authMessage('Please choose an image file.',true);$(inputId).value='';return}
+ const url=URL.createObjectURL(file);img.onload=()=>URL.revokeObjectURL(url);img.src=url;img.style.display='block';
+}
+$('scanFront').addEventListener('change',()=>previewImage('scanFront','scanFrontPreview'));
+$('scanBack').addEventListener('change',()=>previewImage('scanBack','scanBackPreview'));
+function imageToBase64(file){
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onerror=()=>reject(new Error('Could not read image.'));
+  reader.onload=()=>{
+   const img=new Image();
+   img.onerror=()=>reject(new Error('That image could not be opened.'));
+   img.onload=()=>{
+    const max=1400,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    resolve(canvas.toDataURL('image/jpeg',0.82).split(',')[1]);
+   };
+   img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+ });
+}
+$('analyzeCardButton').onclick=async()=>{
+ if(!currentUser){$('scanStatus').textContent='Please sign in before scanning a card.';return}
+ const frontFile=$('scanFront').files?.[0],backFile=$('scanBack').files?.[0];
+ if(!frontFile){$('scanStatus').textContent='Please upload the front image first.';return}
+ const button=$('analyzeCardButton');button.disabled=true;button.textContent='Analyzing…';$('scanStatus').textContent='Preparing images and researching card details. This may take a little while.';$('scanResult').style.display='none';
+ try{
+  const front=await imageToBase64(frontFile),back=backFile?await imageToBase64(backFile):null;
+  const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({front,back,sport:$('scanSport').value})});
+  const result=await res.json();
+  if(!res.ok)throw new Error(result.error||'Card analysis failed.');
+  scanAnalysis=result;
+  const info=result.card_information||{};
+  $('scanName').value=info.athlete_or_character||info.title||'';
+  $('scanSet').value=[info.year,info.brand,info.set,info.card_number].filter(v=>v&&v!=='Not verified.').join(' ')||'';
+  const sport=String(info.sport||$('scanSport').value);
+  const options=[...$('scanResultSport').options].map(o=>o.value);
+  $('scanResultSport').value=options.includes(sport)?sport:(options.includes($('scanSport').value)?$('scanSport').value:'Other');
+  $('scanCondition').value=info.condition_observations||'';
+  $('scanCost').value='0';$('scanValue').value='0';
+  $('scanDetails').value=[
+   info.parallel_or_variant&&'Parallel / variant: '+info.parallel_or_variant,
+   info.rookie_card&&'Rookie card: '+info.rookie_card,
+   info.special_features&&'Special features: '+info.special_features,
+   result.why_this_card_matters&&'Why it matters: '+result.why_this_card_matters,
+   result.history?.card_history&&'Card history: '+result.history.card_history,
+   result.history?.athlete_or_character_history&&'Athlete / character history: '+result.history.athlete_or_character_history,
+   result.listing_description&&'Listing description: '+result.listing_description,
+   Array.isArray(result.social_media_post_ideas)&&'Social post ideas: '+result.social_media_post_ideas.join(' | '),
+   Array.isArray(result.hashtags)&&'Hashtags: '+result.hashtags.join(' ')
+  ].filter(Boolean).join('\n\n');
+  const sources=Array.isArray(result.research_sources)?result.research_sources:[];
+  if(sources.length){$('scanResearch').style.display='block';$('scanResearch').innerHTML='<strong>Research sources</strong><ul>'+sources.map(s=>'<li><a href="'+safe(s.url)+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">'+safe(s.title||s.url)+'</a></li>').join('')+'</ul>'}else{$('scanResearch').style.display='none'}
+  $('scanResult').style.display='block';$('scanStatus').textContent='Analysis complete. Review and correct the suggested details before saving. No market value was automatically verified.';$('scanResult').scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(err){$('scanStatus').textContent='Could not identify this card: '+err.message+' If this continues, check that OPENAI_API_KEY is configured in Vercel.'}
+ finally{button.disabled=false;button.textContent='Identify card'}
+};
+$('saveScannedCard').onclick=async()=>{
+ if(!currentUser){toast('Sign in before saving a scanned card');return}
+ const name=$('scanName').value.trim();if(!name){$('scanName').focus();toast('Enter a player or card name first');return}
+ const record={user_id:currentUser.id,player_name:name,year_set_card_number:$('scanSet').value.trim()||null,sport:$('scanResultSport').value,condition_grade:$('scanCondition').value.trim()||null,purchase_cost:Math.max(0,Number($('scanCost').value)||0),estimated_value:Math.max(0,Number($('scanValue').value)||0),notes:$('scanDetails').value.trim()||null};
+ const button=$('saveScannedCard');button.disabled=true;
+ const {data,error}=await db.from('cards').insert(record).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').single();
+ button.disabled=false;
+ if(error){$('scanStatus').textContent='Could not save card: '+error.message;return}
+ cards.unshift(fromDb(data));updateStats();$('scanStatus').textContent='Card saved to your collection.';toast('Identified card saved to My Collection');$('scanResult').style.display='none';$('scanFront').value='';$('scanBack').value='';previewImage('scanFront','scanFrontPreview');previewImage('scanBack','scanBackPreview');
+};
+$('discardScan').onclick=()=>{$('scanResult').style.display='none';scanAnalysis=null;$('scanStatus').textContent='Results discarded. Upload images to analyze another card.'};
+
 function calcROI(prefix){let buy=Number($(prefix+'Buy').value)||0,sell=Number($(prefix+'Sell').value)||0,fees=Math.min(100,Math.max(0,Number($(prefix+'Fees').value)||0))/100,ship=Number($(prefix+'Ship').value)||0,other=Number($(prefix+'Other').value)||0,net=sell*(1-fees)-ship-other,profit=net-buy,basis=buy+ship+other,roi=basis?profit/basis*100:0,br=(1-fees)>0?(buy+ship+other)/(1-fees):0;$('roiProfit').textContent=money(profit);$('roiProfit').style.color=profit>=0?'var(--green)':'var(--red)';$('roiPercent').textContent=roi.toFixed(1)+'%';$('roiNet').textContent=money(net);$('roiBasis').textContent=money(basis);$('roiBreak').textContent=money(br)}
 ['roiBuy','roiSell','roiFees','roiShip','roiOther'].forEach(id=>$(id).addEventListener('input',()=>calcROI('roi')));
 function analyzeFlip(){let buy=Number($('flipAsk').value)||0,sell=Number($('flipResale').value)||0,fee=Math.min(100,Math.max(0,Number($('flipFee').value)||0))/100,cost=Number($('flipCosts').value)||0,net=sell*(1-fee)-cost,profit=net-buy,roi=(buy+cost)?profit/(buy+cost)*100:0,br=(1-fee)>0?(buy+cost)/(1-fee):0;$('flipProfit').textContent=money(profit);$('flipProfit').style.color=profit>=0?'var(--green)':'var(--red)';$('flipRoi').textContent=roi.toFixed(1)+'%';$('flipNet').textContent=money(net);$('flipBreak').textContent=money(br);$('flipVerdict').textContent=profit>0?'Potentially profitable on these assumptions. Verify sold comps and risk.':'This scenario is not profitable at the entered resale price.'}
