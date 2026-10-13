@@ -61,8 +61,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
     <div class="panel" id="scanPanel" style="margin-bottom:18px">
       <div class="panelhead"><div><h2>✦ Scan & Identify a Card</h2><p>Upload the front and back. AI will suggest card details for you to review before saving.</p></div><span class="pill">AI Scanner</span></div>
       <div class="formgrid">
-        <div class="formgroup"><label for="scanFront">Front image *</label><input class="field" id="scanFront" type="file" accept="image/*" required><img id="scanFrontPreview" alt="Front preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
-        <div class="formgroup"><label for="scanBack">Back image (recommended)</label><input class="field" id="scanBack" type="file" accept="image/*"><img id="scanBackPreview" alt="Back preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
+        <div class="formgroup"><label for="scanFront">Front image *</label><div style="display:grid;gap:8px"><div><small style="color:var(--muted)">Choose an existing image</small><input class="field" id="scanFront" type="file" accept="image/*" required></div><div><small style="color:var(--muted)">Or take a new photo</small><input class="field" id="scanFrontCamera" type="file" accept="image/*" capture="environment"></div></div><img id="scanFrontPreview" alt="Front preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
+        <div class="formgroup"><label for="scanBack">Back image (recommended)</label><div style="display:grid;gap:8px"><div><small style="color:var(--muted)">Choose an existing image</small><input class="field" id="scanBack" type="file" accept="image/*"></div><div><small style="color:var(--muted)">Or take a new photo</small><input class="field" id="scanBackCamera" type="file" accept="image/*" capture="environment"></div></div><img id="scanBackPreview" alt="Back preview" style="display:none;max-width:180px;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px;border:1px solid var(--line)"></div>
         <div class="formgroup"><label for="scanSport">Sport / category</label><select class="field" id="scanSport"><option>Auto Detect</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
         <div class="formgroup" style="display:flex;align-items:end"><button class="button primary" type="button" id="analyzeCardButton">Identify card</button></div>
         <div class="formgroup full"><div class="notice" id="scanStatus" role="status">Upload clear images of both sides. AI results may need correction; identification and market value are not guaranteed.</div></div>
@@ -274,14 +274,16 @@ $('signOutButton').onclick=async()=>{const {error}=await db.auth.signOut();if(er
 
 /* Card scanner powered by the Mister E AI analysis endpoint. */
 let scanAnalysis=null;
-function previewImage(inputId,previewId){
- const file=$(inputId).files?.[0],img=$(previewId);
+function previewImage(inputId,previewId,cameraId){
+ const file=$(cameraId)?.files?.[0]||$(inputId).files?.[0],img=$(previewId);
  if(!file){img.removeAttribute('src');img.style.display='none';return}
  if(!file.type.startsWith('image/')){authMessage('Please choose an image file.',true);$(inputId).value='';return}
  const url=URL.createObjectURL(file);img.onload=()=>URL.revokeObjectURL(url);img.src=url;img.style.display='block';
 }
-$('scanFront').addEventListener('change',()=>previewImage('scanFront','scanFrontPreview'));
-$('scanBack').addEventListener('change',()=>previewImage('scanBack','scanBackPreview'));
+$('scanFront').addEventListener('change',()=>{ $('scanFrontCamera').value='';previewImage('scanFront','scanFrontPreview','scanFrontCamera') });
+$('scanFrontCamera').addEventListener('change',()=>{ $('scanFront').value='';previewImage('scanFront','scanFrontPreview','scanFrontCamera') });
+$('scanBack').addEventListener('change',()=>{ $('scanBackCamera').value='';previewImage('scanBack','scanBackPreview','scanBackCamera') });
+$('scanBackCamera').addEventListener('change',()=>{ $('scanBack').value='';previewImage('scanBack','scanBackPreview','scanBackCamera') });
 function imageToBase64(file){
  return new Promise((resolve,reject)=>{
   const reader=new FileReader();
@@ -302,7 +304,7 @@ function imageToBase64(file){
 }
 $('analyzeCardButton').onclick=async()=>{
  if(!currentUser){$('scanStatus').textContent='Please sign in before scanning a card.';return}
- const frontFile=$('scanFront').files?.[0],backFile=$('scanBack').files?.[0];
+ const frontFile=$('scanFrontCamera').files?.[0]||$('scanFront').files?.[0],backFile=$('scanBackCamera').files?.[0]||$('scanBack').files?.[0];
  if(!frontFile){$('scanStatus').textContent='Please upload the front image first.';return}
  const button=$('analyzeCardButton');button.disabled=true;button.textContent='Analyzing…';$('scanStatus').textContent='Preparing images and researching card details. This may take a little while.';$('scanResult').style.display='none';
  try{
@@ -344,7 +346,7 @@ $('saveScannedCard').onclick=async()=>{
  const {data,error}=await db.from('cards').insert(record).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').single();
  button.disabled=false;
  if(error){$('scanStatus').textContent='Could not save card: '+error.message;return}
- cards.unshift(fromDb(data));updateStats();$('scanStatus').textContent='Card saved to your collection.';toast('Identified card saved to My Collection');$('scanResult').style.display='none';$('scanFront').value='';$('scanBack').value='';previewImage('scanFront','scanFrontPreview');previewImage('scanBack','scanBackPreview');
+ cards.unshift(fromDb(data));updateStats();$('scanStatus').textContent='Card saved to your collection.';toast('Identified card saved to My Collection');$('scanResult').style.display='none';$('scanFront').value='';$('scanBack').value='';$('scanFrontCamera').value='';$('scanBackCamera').value='';previewImage('scanFront','scanFrontPreview','scanFrontCamera');previewImage('scanBack','scanBackPreview','scanBackCamera');
 };
 $('discardScan').onclick=()=>{$('scanResult').style.display='none';scanAnalysis=null;$('scanStatus').textContent='Results discarded. Upload images to analyze another card.'};
 
