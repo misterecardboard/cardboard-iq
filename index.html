@@ -65,11 +65,11 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
         <div class="formgroup"><label for="cardCost">Purchase cost ($)</label><input class="field" id="cardCost" type="number" min="0" step=".01" value="0"></div>
         <div class="formgroup"><label for="cardValue">Estimated value ($)</label><input class="field" id="cardValue" type="number" min="0" step=".01" value="0"></div>
         <div class="formgroup full"><label for="cardNotes">Notes (optional)</label><textarea class="field" id="cardNotes" rows="2" placeholder="Where you bought it, grading plans, etc."></textarea></div>
-        <div class="formgroup full" style="display:flex;gap:10px"><button class="button primary" type="submit">Save card</button><button class="button" type="button" id="cancelAdd">Cancel</button></div>
+        <div class="formgroup full" style="display:flex;gap:10px"><button class="button primary" type="submit" id="saveCardButton">Save card</button><button class="button" type="button" id="cancelAdd">Cancel</button><button class="button" type="button" id="cancelEdit" style="display:none">Cancel edit</button><input type="hidden" id="editingCardId" value=""></div>
       </form>
     </div>
-    <div class="toolbar"><input id="searchCards" class="field search" placeholder="Search player, set, sport…"><select id="filterSport" class="field" style="max-width:190px"><option value="">All sports</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
-    <div class="tablewrap"><table class="table"><thead><tr><th>Card</th><th>Sport / Condition</th><th>Cost</th><th>Est. value</th><th>Unrealized P/L</th><th></th></tr></thead><tbody id="cardRows"><tr><td colspan="6" class="empty">No cards yet. Add a card to start your catalog.</td></tr></tbody></table></div>
+    <div class="toolbar"><input id="searchCards" class="field search" placeholder="Search player, set, sport…"><select id="sortCards" class="field" style="max-width:210px"><option value="newest">Newest added</option><option value="name">Name A–Z</option><option value="valueHigh">Value: high to low</option><option value="valueLow">Value: low to high</option><option value="profitHigh">Profit: high to low</option><option value="costHigh">Cost: high to low</option></select><button class="button" type="button" id="exportCards">Export CSV</button><select id="filterSport" class="field" style="max-width:190px"><option value="">All sports</option><option>Football</option><option>Basketball</option><option>Baseball</option><option>Hockey</option><option>Soccer</option><option>Wrestling / MMA</option><option>Other</option></select></div>
+    <div class="tablewrap"><table class="table"><thead><tr><th>Card</th><th>Sport / Condition</th><th>Cost</th><th>Est. value</th><th>Unrealized P/L</th><th>Actions</th></tr></thead><tbody id="cardRows"><tr><td colspan="6" class="empty">No cards yet. Add a card to start your catalog.</td></tr></tbody></table></div>
     <div class="notice">Cards are saved to your Supabase account when you are signed in. Pricing is still manually entered; live market values are not connected.</div>
   </section>
 
@@ -144,7 +144,7 @@ function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.t
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{go(b.dataset.goto);if(b.dataset.goto==='collection')$('addPanel').style.display='block'}));
 $('showAdd').onclick=()=>{if(!currentUser){authMessage('Please sign in before saving cards.',true);$('authEmail').focus();return}$('addPanel').style.display='block';$('cardName').focus()};
-$('cancelAdd').onclick=()=>{$('addPanel').style.display='none'};
+$('cancelAdd').onclick=()=>resetCardForm();$('cancelEdit').onclick=()=>resetCardForm();
 function fromDb(row){return {id:row.id,name:row.player_name,set:row.year_set_card_number||'',sport:row.sport||'Other',condition:row.condition_grade||'',cost:Number(row.purchase_cost)||0,value:Number(row.estimated_value)||0,notes:row.notes||''}}
 async function loadCards(){
   if(!currentUser){cards=[];updateStats();return}
@@ -153,23 +153,47 @@ async function loadCards(){
   cards=(data||[]).map(fromDb);updateStats();
 }
 function renderCards(){
- let q=$('searchCards').value.toLowerCase(),sport=$('filterSport').value;
- let list=cards.filter(c=>(!sport||c.sport===sport)&&[c.name,c.set,c.sport,c.condition].join(' ').toLowerCase().includes(q));
- $('cardRows').innerHTML=list.length?list.map(c=>`<tr><td><strong>${safe(c.name)}</strong><small>${safe(c.set||'Set / number not entered')}</small></td><td>${safe(c.sport)}<small>${safe(c.condition||'Condition not entered')}</small></td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td><button class="button" data-remove="${safe(c.id)}">Remove</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">'+(currentUser?'No matching cards found.':'Sign in to load your saved collection.')+'</td></tr>';
- document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{if(!currentUser)return;const {error}=await db.from('cards').delete().eq('id',b.dataset.remove);if(error){toast('Could not remove card: '+error.message);return}cards=cards.filter(c=>String(c.id)!==String(b.dataset.remove));updateStats();toast('Card removed from your collection')});
+ let q=$('searchCards').value.toLowerCase(),sport=$('filterSport').value,sort=$('sortCards').value;
+ let list=cards.filter(c=>(!sport||c.sport===sport)&&[c.name,c.set,c.sport,c.condition,c.notes].join(' ').toLowerCase().includes(q));
+ list.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='valueHigh'?b.value-a.value:sort==='valueLow'?a.value-b.value:sort==='profitHigh'?(b.value-b.cost)-(a.value-a.cost):sort==='costHigh'?b.cost-a.cost:String(b.id).localeCompare(String(a.id)));
+ $('cardRows').innerHTML=list.length?list.map(c=>`<tr><td><strong>${safe(c.name)}</strong><small>${safe(c.set||'Set / number not entered')}</small></td><td>${safe(c.sport)}<small>${safe(c.condition||'Condition not entered')}</small></td><td>${money(c.cost)}</td><td>${money(c.value)}</td><td style="color:${c.value-c.cost>=0?'var(--green)':'var(--red)'}">${money(c.value-c.cost)}</td><td><div style="display:flex;gap:6px"><button class="button" data-edit="${safe(c.id)}">Edit</button><button class="button" data-remove="${safe(c.id)}">Remove</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">'+(currentUser?'No matching cards found.':'Sign in to load your saved collection.')+'</td></tr>';
+ document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
+ document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{if(!currentUser)return;if(!confirm('Remove this card from your collection? This cannot be undone.'))return;const {error}=await db.from('cards').delete().eq('id',b.dataset.remove);if(error){toast('Could not remove card: '+error.message);return}cards=cards.filter(c=>String(c.id)!==String(b.dataset.remove));updateStats();toast('Card removed from your collection')});
  $('recentCards').innerHTML=cards.length?cards.slice(0,3).map((c,i)=>`<div class="holding"><div class="cardthumb ${i===1?'purp':i===2?'gold':''}">CARD</div><div class="holdinginfo"><strong>${safe(c.name)}</strong><small>${safe(c.set||c.sport)}</small></div><div class="holdingval">${money(c.value)}<small>${money(c.value-c.cost)} P/L</small></div></div>`).join(''):'<div class="empty">Your collection is waiting.<br><button class="button primary" data-goto="collection" style="margin-top:12px">＋ Add a card</button></div>';
  document.querySelectorAll('#recentCards [data-goto]').forEach(b=>b.onclick=()=>{go('collection');$('addPanel').style.display='block'});
 }
+function startEdit(id){
+ const c=cards.find(x=>String(x.id)===String(id));if(!c||!currentUser)return;
+ $('editingCardId').value=String(c.id);$('cardName').value=c.name;$('cardSet').value=c.set;$('cardSport').value=c.sport;$('cardCondition').value=c.condition;$('cardCost').value=c.cost;$('cardValue').value=c.value;$('cardNotes').value=c.notes;
+ $('saveCardButton').textContent='Save changes';$('cancelAdd').style.display='none';$('cancelEdit').style.display='inline-block';$('addPanel').style.display='block';$('addPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function resetCardForm(){ $('cardForm').reset();$('cardCost').value=0;$('cardValue').value=0;$('editingCardId').value='';$('saveCardButton').textContent='Save card';$('cancelAdd').style.display='inline-block';$('cancelEdit').style.display='none';$('addPanel').style.display='none' }
+
 function updateStats(){let value=cards.reduce((a,c)=>a+c.value,0),cost=cards.reduce((a,c)=>a+c.cost,0),profit=value-cost;$('statValue').textContent=money(value);$('statInvested').textContent=money(cost);$('statProfit').textContent=(profit>0?'+':'')+money(profit);$('statProfit').style.color=profit>=0?'var(--green)':'var(--red)';$('statCount').textContent=cards.length;renderCards()}
 $('cardForm').onsubmit=async e=>{
  e.preventDefault();
  if(!currentUser){authMessage('Please sign in before saving cards.',true);return}
  const record={user_id:currentUser.id,player_name:$('cardName').value.trim(),year_set_card_number:$('cardSet').value.trim()||null,sport:$('cardSport').value,condition_grade:$('cardCondition').value.trim()||null,purchase_cost:Math.max(0,Number($('cardCost').value)||0),estimated_value:Math.max(0,Number($('cardValue').value)||0),notes:$('cardNotes').value.trim()||null};
- const {data,error}=await db.from('cards').insert(record).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').single();
- if(error){toast('Could not save card: '+error.message);return}
- cards.unshift(fromDb(data));e.target.reset();$('cardCost').value=0;$('cardValue').value=0;$('addPanel').style.display='none';updateStats();toast('Card saved to your Supabase collection')
+ const editingId=$('editingCardId').value;
+ let data,error;
+ if(editingId){
+   const result=await db.from('cards').update(record).eq('id',editingId).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').single();data=result.data;error=result.error;
+ }else{
+   const result=await db.from('cards').insert(record).select('id,user_id,player_name,year_set_card_number,sport,condition_grade,purchase_cost,estimated_value,notes,created_at').single();data=result.data;error=result.error;
+ }
+ if(error){toast('Could not '+(editingId?'update':'save')+' card: '+error.message);return}
+ if(editingId){cards=cards.map(c=>String(c.id)===String(editingId)?fromDb(data):c);toast('Card updated')}else{cards.unshift(fromDb(data));toast('Card saved to your Supabase collection')}
+ resetCardForm();updateStats()
 };
-$('searchCards').oninput=renderCards;$('filterSport').onchange=renderCards;
+$('searchCards').oninput=renderCards;$('filterSport').onchange=renderCards;$('sortCards').onchange=renderCards;
+$('exportCards').onclick=()=>{
+ if(!currentUser){toast('Sign in to export your collection');return}
+ if(!cards.length){toast('There are no cards to export yet');return}
+ const cols=[['Player / Card name','name'],['Year, set & card number','set'],['Sport','sport'],['Condition / grade','condition'],['Purchase cost','cost'],['Estimated value','value'],['Unrealized profit / loss','pnl'],['Notes','notes']];
+ const quote=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+ const rows=[cols.map(c=>quote(c[0])).join(','),...cards.map(c=>cols.map(([,k])=>quote(k==='pnl'?Number(c.value)-Number(c.cost):c[k])).join(','))];
+ const blob=new Blob(['\\uFEFF'+rows.join('\\r\\n')],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='cardboard-iq-collection.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Collection CSV exported')
+};
 $('authForm').addEventListener('submit',async e=>{
  e.preventDefault();const email=$('authEmail').value.trim(),password=$('authPassword').value;
  $('signInButton').disabled=true;
