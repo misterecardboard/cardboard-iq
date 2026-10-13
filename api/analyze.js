@@ -168,14 +168,22 @@ Keep every field concise.
             }
           ],
 
-          tool_choice: "required",
+          tool_choice: "auto",
+
+          // Enforce valid JSON from the Responses API instead of relying
+          // on prompt instructions alone.
+          text: {
+            format: {
+              type: "json_object"
+            }
+          },
 
           /*
            * Keep the maximum response deliberately small.
            * MISTER E AI does not need thousands of words
            * to produce the six requested sections.
            */
-          max_output_tokens: 2200
+          max_output_tokens: 3500
         })
       }
     );
@@ -255,19 +263,11 @@ Keep every field concise.
     try {
       result = JSON.parse(outputText);
     } catch (error) {
-      console.error(
-        "JSON Parse Error:",
-        error
-      );
-
-      console.error(
-        "Model Output:",
-        outputText
-      );
+      console.error("JSON Parse Error:", error);
+      console.error("Model Output:", outputText);
 
       return response.status(500).json({
-        error:
-          "MISTER E AI returned an invalid analysis format."
+        error: "The card analysis response could not be read. Please try again with clearer photos."
       });
     }
 
