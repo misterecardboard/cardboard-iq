@@ -134,7 +134,17 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
           <div class="formgroup"><label for="scanCondition">Condition observations</label><input class="field" id="scanCondition"></div>
           <div class="formgroup"><label for="scanCost">Purchase cost ($)</label><input class="field" id="scanCost" type="number" min="0" step=".01" value="0"></div>
           <div class="formgroup"><label for="scanValue">Estimated value ($)</label><input class="field" id="scanValue" type="number" min="0" step=".01" value="0"><small style="color:var(--muted)">AI does not provide a verified market price. Enter your own estimate.</small></div>
-          <div class="formgroup full"><label for="scanDetails">Identification notes</label><textarea class="field" id="scanDetails" rows="3"></textarea></div>
+          <div class="formgroup full"><label>Identification details</label><div class="formgrid">
+            <div class="formgroup"><label for="scanParallel">Parallel / variant</label><input class="field" id="scanParallel" placeholder="Not verified if unknown"></div>
+            <div class="formgroup"><label for="scanRookie">Rookie card</label><input class="field" id="scanRookie" placeholder="Yes / No / Not verified"></div>
+            <div class="formgroup full"><label for="scanFeatures">Special features</label><textarea class="field" id="scanFeatures" rows="2"></textarea></div>
+            <div class="formgroup full"><label for="scanWhy">Why this card matters</label><textarea class="field" id="scanWhy" rows="2"></textarea></div>
+            <div class="formgroup full"><label for="scanCardHistory">Card history</label><textarea class="field" id="scanCardHistory" rows="2"></textarea></div>
+            <div class="formgroup full"><label for="scanPlayerHistory">Athlete / character history</label><textarea class="field" id="scanPlayerHistory" rows="2"></textarea></div>
+            <div class="formgroup full"><label for="scanListing">Listing description</label><textarea class="field" id="scanListing" rows="3"></textarea></div>
+            <div class="formgroup full"><label for="scanSocialIdeas">Social media post ideas (one per line)</label><textarea class="field" id="scanSocialIdeas" rows="3"></textarea></div>
+            <div class="formgroup full"><label for="scanHashtags">Hashtags</label><textarea class="field" id="scanHashtags" rows="2"></textarea></div>
+          </div></div>
           <div class="formgroup full"><button class="button primary" type="button" id="saveScannedCard">Save to My Collection</button><button class="button" type="button" id="discardScan">Discard results</button></div>
         </div>
         <div class="notice" id="scanResearch" style="display:none"></div>
@@ -331,17 +341,15 @@ $('analyzeCardButton').onclick=async()=>{
   $('scanResultSport').value=options.includes(sport)?sport:(options.includes($('scanSport').value)?$('scanSport').value:'Other');
   $('scanCondition').value=info.condition_observations||'';
   $('scanCost').value='0';$('scanValue').value='0';
-  $('scanDetails').value=[
-   info.parallel_or_variant&&'Parallel / variant: '+info.parallel_or_variant,
-   info.rookie_card&&'Rookie card: '+info.rookie_card,
-   info.special_features&&'Special features: '+info.special_features,
-   result.why_this_card_matters&&'Why it matters: '+result.why_this_card_matters,
-   result.history?.card_history&&'Card history: '+result.history.card_history,
-   result.history?.athlete_or_character_history&&'Athlete / character history: '+result.history.athlete_or_character_history,
-   result.listing_description&&'Listing description: '+result.listing_description,
-   Array.isArray(result.social_media_post_ideas)&&'Social post ideas: '+result.social_media_post_ideas.join(' | '),
-   Array.isArray(result.hashtags)&&'Hashtags: '+result.hashtags.join(' ')
-  ].filter(Boolean).join('\n\n');
+  $('scanParallel').value=info.parallel_or_variant||'';
+  $('scanRookie').value=info.rookie_card||'';
+  $('scanFeatures').value=info.special_features||'';
+  $('scanWhy').value=result.why_this_card_matters||'';
+  $('scanCardHistory').value=result.history?.card_history||'';
+  $('scanPlayerHistory').value=result.history?.athlete_or_character_history||'';
+  $('scanListing').value=result.listing_description||'';
+  $('scanSocialIdeas').value=Array.isArray(result.social_media_post_ideas)?result.social_media_post_ideas.join('\n'):'';
+  $('scanHashtags').value=Array.isArray(result.hashtags)?result.hashtags.join(' '):'';
   const sources=Array.isArray(result.research_sources)?result.research_sources:[];
   if(sources.length){$('scanResearch').style.display='block';$('scanResearch').innerHTML='<strong>Research sources</strong><ul>'+sources.map(s=>'<li><a href="'+safe(s.url)+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">'+safe(s.title||s.url)+'</a></li>').join('')+'</ul>'}else{$('scanResearch').style.display='none'}
   $('scanResult').style.display='block';$('scanStatus').textContent='Analysis complete. Review the identification, history, listing copy, and research sources below. Market values are not included yet.';$('scanResult').scrollIntoView({behavior:'smooth',block:'start'});
@@ -351,7 +359,18 @@ $('analyzeCardButton').onclick=async()=>{
 $('saveScannedCard').onclick=async()=>{
  if(!currentUser){toast('Sign in before saving a scanned card');return}
  const name=$('scanName').value.trim();if(!name){$('scanName').focus();toast('Enter a player or card name first');return}
- const record={user_id:currentUser.id,player_name:name,year_set_card_number:$('scanSet').value.trim()||null,sport:$('scanResultSport').value,condition_grade:$('scanCondition').value.trim()||null,purchase_cost:Math.max(0,Number($('scanCost').value)||0),estimated_value:Math.max(0,Number($('scanValue').value)||0),notes:$('scanDetails').value.trim()||null};
+ const notes=[
+ $('scanParallel').value.trim()&&'Parallel / variant: '+$('scanParallel').value.trim(),
+ $('scanRookie').value.trim()&&'Rookie card: '+$('scanRookie').value.trim(),
+ $('scanFeatures').value.trim()&&'Special features: '+$('scanFeatures').value.trim(),
+ $('scanWhy').value.trim()&&'Why this card matters: '+$('scanWhy').value.trim(),
+ $('scanCardHistory').value.trim()&&'Card history: '+$('scanCardHistory').value.trim(),
+ $('scanPlayerHistory').value.trim()&&'Athlete / character history: '+$('scanPlayerHistory').value.trim(),
+ $('scanListing').value.trim()&&'Listing description: '+$('scanListing').value.trim(),
+ $('scanSocialIdeas').value.trim()&&'Social media post ideas: '+$('scanSocialIdeas').value.trim(),
+ $('scanHashtags').value.trim()&&'Hashtags: '+$('scanHashtags').value.trim()
+].filter(Boolean).join('\n\n');
+ const record={user_id:currentUser.id,player_name:name,year_set_card_number:$('scanSet').value.trim()||null,sport:$('scanResultSport').value,condition_grade:$('scanCondition').value.trim()||null,purchase_cost:Math.max(0,Number($('scanCost').value)||0),estimated_value:Math.max(0,Number($('scanValue').value)||0),notes:notes||null};
  const button=$('saveScannedCard');button.disabled=true;
  const frontFile=$('scanFrontCamera').files?.[0]||$('scanFront').files?.[0],backFile=$('scanBackCamera').files?.[0]||$('scanBack').files?.[0];
  button.textContent='Saving…';
