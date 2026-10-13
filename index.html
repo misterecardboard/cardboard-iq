@@ -104,7 +104,17 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
   <section class="section" id="flip">
     <div class="sectionhead"><div><h2>Flip IQ</h2><p>Screen a potential deal with the numbers you have.</p></div></div>
     <div class="grid dashboardgrid"><div class="panel"><div class="panelhead"><div><h2>Deal analyzer</h2><p>Enter an asking price and your target resale estimate.</p></div></div><div class="formgrid">
-      <div class="formgroup full"<section class="section" id="mistereai">
+      <div class="formgroup full"><label for="flipName">Card / deal name</label><input class="field" id="flipName" placeholder="e.g. Rookie parallel, raw"></div>
+      <div class="formgroup"><label for="flipAsk">Asking price ($)</label><input class="field" id="flipAsk" type="number" min="0" step=".01" value="40"></div>
+      <div class="formgroup"><label for="flipResale">Estimated resale ($)</label><input class="field" id="flipResale" type="number" min="0" step=".01" value="70"></div>
+      <div class="formgroup"><label for="flipFee">Selling fees (%)</label><input class="field" id="flipFee" type="number" min="0" max="100" step=".1" value="13"></div>
+      <div class="formgroup"><label for="flipCosts">Other costs ($)</label><input class="field" id="flipCosts" type="number" min="0" step=".01" value="5"></div>
+      <div class="formgroup full"><button class="button primary" id="analyzeFlip">Analyze opportunity</button></div>
+    </div></div><div class="resultbox"><div class="eyebrow">Estimated deal outcome</div><div class="big" id="flipProfit">$15.90</div><div class="muted" id="flipVerdict">Enter your numbers and analyze the opportunity.</div><div class="resultrows"><div class="resultrow"><span>Estimated ROI</span><strong id="flipRoi">35.3%</strong></div><div class="resultrow"><span>Estimated net after fees</span><strong id="flipNet">$60.90</strong></div><div class="resultrow"><span>Break-even resale price</span><strong id="flipBreak">$51.72</strong></div></div><div class="notice">This is a scenario estimate, not a market valuation. Confirm recent sold comps, condition, authenticity, liquidity, and all fees before buying.</div></div></div>
+    <div class="panel" style="margin-top:16px"><h2 style="margin-bottom:14px">Before you buy</h2><div class="tips"><div class="tip"><b>Verify sold comps</b><p>Use recent completed sales for the same card, parallel, grade, and condition.</p></div><div class="tip"><b>Price in every cost</b><p>Include shipping both ways, supplies, grading, taxes, and marketplace fees.</p></div><div class="tip"><b>Plan your exit</b><p>Decide your target price and maximum holding time before buying.</p></div></div></div>
+  </section>
+
+  <section class="section" id="mistereai">
     <div class="sectionhead"><div><h2>Mister E AI</h2><p>Scan a trading card, review its identification, and save it to your collection.</p></div></div>
     <div class="panel" id="scanPanel" style="margin-bottom:18px">
       <div class="panelhead"><div><h2>✦ Scan & Identify a Card</h2><p>Upload the front and back. AI will suggest card details for you to review before saving.</p></div><span class="pill">AI Scanner</span></div>
@@ -131,16 +141,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.upload-choice{d
       </div>
     </div>
 
-  </section>
-
-  ><label for="flipName">Card / deal name</label><input class="field" id="flipName" placeholder="e.g. Rookie parallel, raw"></div>
-      <div class="formgroup"><label for="flipAsk">Asking price ($)</label><input class="field" id="flipAsk" type="number" min="0" step=".01" value="40"></div>
-      <div class="formgroup"><label for="flipResale">Estimated resale ($)</label><input class="field" id="flipResale" type="number" min="0" step=".01" value="70"></div>
-      <div class="formgroup"><label for="flipFee">Selling fees (%)</label><input class="field" id="flipFee" type="number" min="0" max="100" step=".1" value="13"></div>
-      <div class="formgroup"><label for="flipCosts">Other costs ($)</label><input class="field" id="flipCosts" type="number" min="0" step=".01" value="5"></div>
-      <div class="formgroup full"><button class="button primary" id="analyzeFlip">Analyze opportunity</button></div>
-    </div></div><div class="resultbox"><div class="eyebrow">Estimated deal outcome</div><div class="big" id="flipProfit">$15.90</div><div class="muted" id="flipVerdict">Enter your numbers and analyze the opportunity.</div><div class="resultrows"><div class="resultrow"><span>Estimated ROI</span><strong id="flipRoi">35.3%</strong></div><div class="resultrow"><span>Estimated net after fees</span><strong id="flipNet">$60.90</strong></div><div class="resultrow"><span>Break-even resale price</span><strong id="flipBreak">$51.72</strong></div></div><div class="notice">This is a scenario estimate, not a market valuation. Confirm recent sold comps, condition, authenticity, liquidity, and all fees before buying.</div></div></div>
-    <div class="panel" style="margin-top:16px"><h2 style="margin-bottom:14px">Before you buy</h2><div class="tips"><div class="tip"><b>Verify sold comps</b><p>Use recent completed sales for the same card, parallel, grade, and condition.</p></div><div class="tip"><b>Price in every cost</b><p>Include shipping both ways, supplies, grading, taxes, and marketplace fees.</p></div><div class="tip"><b>Plan your exit</b><p>Decide your target price and maximum holding time before buying.</p></div></div></div>
   </section>
 </main>
 </div>
