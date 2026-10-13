@@ -162,6 +162,8 @@ Keep every field concise.
             }
           ],
 
+          // JSON mode and web_search are incompatible, so this request
+          // uses the prompt's strict JSON instruction and parses the result.
           tools: [
             {
               type: "web_search"
@@ -169,14 +171,6 @@ Keep every field concise.
           ],
 
           tool_choice: "auto",
-
-          // Enforce valid JSON from the Responses API instead of relying
-          // on prompt instructions alone.
-          text: {
-            format: {
-              type: "json_object"
-            }
-          },
 
           /*
            * Keep the maximum response deliberately small.
